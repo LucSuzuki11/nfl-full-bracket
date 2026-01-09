@@ -17,23 +17,52 @@
     }
     body { font-family: -apple-system, system-ui, Segoe UI, Roboto, Arial; margin: 16px; color:var(--text); background:var(--bg); }
     h1 { font-size: 20px; margin: 0 0 6px 0; }
+    h2 { font-size:16px; margin:0; }
     .muted { color: var(--muted); font-size: 14px; }
     .topbar { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin: 10px 0 14px 0; }
     input[type="text"]{ padding:10px; border:1px solid #ccc; border-radius:10px; width:240px; }
     button{ padding:12px 14px; border:0; border-radius:12px; background:var(--accent); color:#fff; font-weight:700; cursor:pointer; }
     button:disabled{ opacity:.5; cursor:not-allowed; }
+    .status { margin-top:10px; font-weight:700; }
+    .ok { color: var(--ok); }
+    .error { color: var(--err); }
 
-    /* Bracket Layout */
-    .bracket {
+    /* NEW LAYOUT: AFC left, Super Bowl center, NFC right */
+    .layout{
       display:grid;
-      grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
-      gap: 12px;
+      grid-template-columns: 1fr 360px 1fr;
+      gap: 16px;
       align-items:start;
     }
-    .col { border:1px solid var(--border); border-radius:14px; padding:12px; background:#fff; }
-    .col h2 { font-size:16px; margin:0 0 10px 0; }
+    .side, .center{
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:12px;
+      background:#fff;
+    }
+    .center{
+      position: sticky;
+      top: 12px;
+      height: fit-content;
+    }
+    .round{
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+    .round:first-of-type{
+      border-top:none;
+      padding-top:0;
+    }
     .roundTitle { font-size:13px; color:var(--muted); margin: 2px 0 10px 0; }
+    .note{
+      font-size:12px;
+      color:var(--muted);
+      margin-top:6px;
+      line-height:1.25;
+    }
 
+    /* Game card styles */
     .game{
       border:1px solid var(--border);
       border-radius:12px;
@@ -91,36 +120,11 @@
       opacity:.55;
       font-weight:600;
     }
-    .note{
-      font-size:12px;
-      color:var(--muted);
-      margin-top:6px;
-      line-height:1.25;
-    }
 
-    .centerCol{
-      display:flex;
-      flex-direction:column;
-      gap:12px;
-    }
-    .sbCard{
-      border:1px solid var(--border);
-      border-radius:14px;
-      padding:12px;
-      background:#fff;
-    }
-    .status { margin-top:10px; font-weight:700; }
-    .ok { color: var(--ok); }
-    .error { color: var(--err); }
-
-    /* Debug frame (hide later) */
-    #resultFrame{
-      width:100%;
-      height:110px;
-      border:1px solid var(--border);
-      border-radius:12px;
-      margin-top:12px;
-      background:#fff;
+    /* Mobile */
+    @media (max-width: 980px){
+      .layout{ grid-template-columns: 1fr; }
+      .center{ position: static; }
     }
   </style>
 </head>
@@ -141,72 +145,71 @@
     <div id="status" class="status muted"></div>
   </div>
 
-  <div class="bracket">
-    <!-- AFC side -->
-    <div class="col" id="afc_wc">
+  <div class="layout">
+    <!-- AFC SIDE -->
+    <section class="side">
       <h2>AFC</h2>
-      <div class="roundTitle">Wild Card</div>
-      <div id="afc_wc_games"></div>
-    </div>
 
-    <div class="col" id="afc_div">
-      <h2>AFC</h2>
-      <div class="roundTitle">Divisional</div>
-      <div id="afc_div_games"></div>
-      <div class="note">Reseeds after Wild Card.</div>
-    </div>
-
-    <div class="col" id="afc_conf">
-      <h2>AFC</h2>
-      <div class="roundTitle">Conference</div>
-      <div id="afc_conf_games"></div>
-    </div>
-
-    <!-- Super Bowl (center) -->
-    <div class="col centerCol">
-      <div class="sbCard">
-        <h2>Super Bowl</h2>
-        <div class="roundTitle">Final</div>
-        <div id="sb_game"></div>
-        <div class="note">Home/away doesn’t matter.</div>
+      <div class="round">
+        <div class="roundTitle">Wild Card</div>
+        <div id="afc_wc_games"></div>
       </div>
 
-      <!-- DEBUG: shows OK/ERROR response from Apps Script.
-           Once you’re satisfied, change display to none. -->
-      <iframe id="resultFrame" name="resultFrame"></iframe>
+      <div class="round">
+        <div class="roundTitle">Divisional</div>
+        <div id="afc_div_games"></div>
+        <div class="note">Reseeds after Wild Card.</div>
+      </div>
 
-      <!-- Hidden POST form (CORS-proof) -->
+      <div class="round">
+        <div class="roundTitle">Conference</div>
+        <div id="afc_conf_games"></div>
+      </div>
+    </section>
+
+    <!-- SUPER BOWL CENTER -->
+    <section class="center">
+      <h2>Super Bowl</h2>
+      <div class="roundTitle">Final</div>
+      <div id="sb_game"></div>
+      <div class="note">Home/away doesn’t matter.</div>
+
+      <!-- DEBUG: shows OK/ERROR (hide later) -->
+      <iframe id="resultFrame" name="resultFrame" style="width:100%; height:110px; border:1px solid var(--border); border-radius:12px; margin-top:12px; background:#fff;"></iframe>
+
+      <!-- Hidden POST form -->
       <form id="postForm" target="resultFrame" method="POST" style="display:none;">
         <input name="round" id="f_round" />
         <input name="name" id="f_name" />
         <textarea name="picks" id="f_picks"></textarea>
       </form>
-    </div>
+    </section>
 
-    <!-- NFC side -->
-    <div class="col" id="nfc_wc">
+    <!-- NFC SIDE -->
+    <section class="side">
       <h2>NFC</h2>
-      <div class="roundTitle">Wild Card</div>
-      <div id="nfc_wc_games"></div>
-    </div>
 
-    <div class="col" id="nfc_div">
-      <h2>NFC</h2>
-      <div class="roundTitle">Divisional</div>
-      <div id="nfc_div_games"></div>
-      <div class="note">Reseeds after Wild Card.</div>
-    </div>
+      <div class="round">
+        <div class="roundTitle">Wild Card</div>
+        <div id="nfc_wc_games"></div>
+      </div>
 
-    <div class="col" id="nfc_conf">
-      <h2>NFC</h2>
-      <div class="roundTitle">Conference</div>
-      <div id="nfc_conf_games"></div>
-    </div>
+      <div class="round">
+        <div class="roundTitle">Divisional</div>
+        <div id="nfc_div_games"></div>
+        <div class="note">Reseeds after Wild Card.</div>
+      </div>
+
+      <div class="round">
+        <div class="roundTitle">Conference</div>
+        <div id="nfc_conf_games"></div>
+      </div>
+    </section>
   </div>
 
 <script>
-  // Your Apps Script Web App URL (must end in /exec)
-  const API_URL = "https://script.google.com/macros/s/AKfycbwwjmNiNpnrKpDCLXZTkXJBXXko23cVPifr-gxpfLUCWv8pjnX6Q29-W6izJStyTlE/exec";
+  // Paste your Apps Script Web App URL (must end in /exec)
+  const API_URL = "https://script.google.com/macros/s/AKfycbxpad-m4_a0J69IAYBc1GIFIoMgzqqL3m_-DRy6yNuZGmh_cfp9_HgRo1vuEoR2qeAH/exec";
 
   // Seeds from you
   const TEAMS = {
@@ -238,13 +241,14 @@
   ];
 
   // ---------- State ----------
-  // winnerSeedByGameId: { [gameId]: seedNumber }
-  const winnerSeedByGameId = {};
-  // scoresByGameId: { [gameId]: { [seed]: number } }
-  const scoresByGameId = {};
+  const winnerSeedByGameId = {}; // { [gameId]: seedNumber OR "AFC:1" }
+  const scoresByGameId = {};     // { [gameId]: { [seedKey]: number } }
 
   // ---------- Helpers ----------
   function assertValidApiUrl(url){
+    if (!url || url === "PASTE_YOUR_SCRIPT_URL_HERE") {
+      throw new Error("Paste your Apps Script /exec URL into API_URL.");
+    }
     if (!url.startsWith("https://script.google.com/macros/s/")) throw new Error("Bad API_URL");
     if (!url.endsWith("/exec")) throw new Error("API_URL must end with /exec");
   }
@@ -258,15 +262,15 @@
     return seedA < seedB ? [seedA, seedB] : [seedB, seedA];
   }
 
-  function getScore(gameId, seed){
-    return (scoresByGameId[gameId] && scoresByGameId[gameId][seed] !== undefined)
-      ? scoresByGameId[gameId][seed]
+  function getScore(gameId, seedKey){
+    return (scoresByGameId[gameId] && scoresByGameId[gameId][seedKey] !== undefined)
+      ? scoresByGameId[gameId][seedKey]
       : "";
   }
 
-  function setScore(gameId, seed, val){
+  function setScore(gameId, seedKey, val){
     if (!scoresByGameId[gameId]) scoresByGameId[gameId] = {};
-    scoresByGameId[gameId][seed] = val;
+    scoresByGameId[gameId][seedKey] = val;
   }
 
   function clearGameState(gameId){
@@ -274,24 +278,22 @@
     delete scoresByGameId[gameId];
   }
 
-  // Build round games based on current winners (reseeding)
+  // ---------- Reseeding ----------
   function computeDivisionalGames(conf){
-    // Remaining seeds: 1 + WC winners
     const wcWinnerSeeds = WC_MATCHUPS.map((pair, idx) => {
       const gameId = `WC_${conf}_${idx+1}`;
       return winnerSeedByGameId[gameId] ?? null;
     });
 
-    if (wcWinnerSeeds.some(x => x === null)) return []; // not ready
+    if (wcWinnerSeeds.some(x => x === null)) return [];
 
-    const remaining = [1, ...wcWinnerSeeds].slice().sort((a,b)=>a-b); // ascending
-    // #1 plays lowest remaining team = highest seed number
+    const remaining = [1, ...wcWinnerSeeds].slice().sort((a,b)=>a-b);
     const top = 1;
     const lowestRemaining = remaining[remaining.length - 1];
     const others = remaining.filter(s => s !== top && s !== lowestRemaining);
 
-    const g1 = betterSeedHomePair(top, lowestRemaining);     // [home, away]
-    const g2 = betterSeedHomePair(others[0], others[1]);     // [home, away]
+    const g1 = betterSeedHomePair(top, lowestRemaining);
+    const g2 = betterSeedHomePair(others[0], others[1]);
 
     return [
       { id:`DIV_${conf}_1`, conf, round:"Divisional", home:g1[0], away:g1[1] },
@@ -320,7 +322,6 @@
     const nfcChamp = winnerSeedByGameId[nfcConf.id] ?? null;
     if (afcChamp === null || nfcChamp === null) return null;
 
-    // Home/away doesn't matter; we’ll display AFC vs NFC
     return {
       id: "SB_1",
       conf: "SB",
@@ -330,22 +331,19 @@
     };
   }
 
-  // If a game’s participants change due to reseeding, clear that game + downstream
+  // Clear downstream picks if participants change
   function reconcileDownstream(){
-    // Divisional games
     ["AFC","NFC"].forEach(conf=>{
       const div = computeDivisionalGames(conf);
-      const expectedDivIds = [`DIV_${conf}_1`,`DIV_${conf}_2`];
+      const divIds = [`DIV_${conf}_1`,`DIV_${conf}_2`];
 
-      // If not ready, clear div + conf + SB state
       if (div.length !== 2){
-        expectedDivIds.forEach(clearGameState);
+        divIds.forEach(clearGameState);
         clearGameState(`CONF_${conf}_1`);
         clearGameState("SB_1");
         return;
       }
 
-      // Ensure stored scores correspond to current participants; else clear
       div.forEach(g=>{
         const stored = scoresByGameId[g.id];
         const winner = winnerSeedByGameId[g.id];
@@ -353,13 +351,11 @@
 
         if (stored){
           const keys = Object.keys(stored).map(k=>Number(k));
-          const mismatch = keys.some(s => !validSeeds.has(s));
-          if (mismatch) clearGameState(g.id);
+          if (keys.some(s => !validSeeds.has(s))) clearGameState(g.id);
         }
         if (winner !== undefined && !validSeeds.has(winner)) clearGameState(g.id);
       });
 
-      // Conference game
       const confGame = computeConferenceGame(conf);
       const confId = `CONF_${conf}_1`;
       if (!confGame){
@@ -367,19 +363,18 @@
         clearGameState("SB_1");
         return;
       }
+
       const storedC = scoresByGameId[confId];
       const winnerC = winnerSeedByGameId[confId];
       const validC = new Set([confGame.home, confGame.away]);
+
       if (storedC){
         const keys = Object.keys(storedC).map(k=>Number(k));
-        if (keys.some(s=>!validC.has(s))) clearGameState(confId);
+        if (keys.some(s => !validC.has(s))) clearGameState(confId);
       }
       if (winnerC !== undefined && !validC.has(winnerC)) clearGameState(confId);
-
-      // Super Bowl depends on both conferences; handle in render
     });
 
-    // Super Bowl: if either champ changes, clear SB state
     const sb = computeSuperBowlGame();
     if (!sb){
       clearGameState("SB_1");
@@ -390,42 +385,36 @@
     const sbSeeds = new Set([`${sb.home.conf}:${sb.home.seed}`, `${sb.away.conf}:${sb.away.seed}`]);
 
     if (storedSB){
-      const keys = Object.keys(storedSB); // we’ll store keys as "AFC:1" etc
+      const keys = Object.keys(storedSB);
       if (keys.some(k => !sbSeeds.has(k))) clearGameState("SB_1");
     }
-    if (winnerSB !== undefined){
-      // winner stored as string key "AFC:1" or "NFC:2"
-      if (!sbSeeds.has(winnerSB)) clearGameState("SB_1");
-    }
+    if (winnerSB !== undefined && !sbSeeds.has(winnerSB)) clearGameState("SB_1");
   }
 
   // ---------- Rendering ----------
-  function renderGame(container, game, opts={}){
+  function renderGame(container, game){
     const { conf, round } = game;
-
     const isSB = conf === "SB";
     const gid = game.id;
 
-    // Build participants
-    let homeSeed, awaySeed, homeName, awayName, homeLabel, awayLabel;
+    let homeSeedKey, awaySeedKey, homeName, awayName, homeLabel, awayLabel;
 
     if (!isSB){
-      homeSeed = game.home;
-      awaySeed = game.away;
-      homeName = teamName(conf, homeSeed);
-      awayName = teamName(conf, awaySeed);
+      homeSeedKey = game.home;
+      awaySeedKey = game.away;
+      homeName = teamName(conf, game.home);
+      awayName = teamName(conf, game.away);
       homeLabel = `${homeName}`;
       awayLabel = `${awayName}`;
     } else {
-      homeSeed = `${game.home.conf}:${game.home.seed}`;
-      awaySeed = `${game.away.conf}:${game.away.seed}`;
+      homeSeedKey = `${game.home.conf}:${game.home.seed}`;
+      awaySeedKey = `${game.away.conf}:${game.away.seed}`;
       homeName = teamName(game.home.conf, game.home.seed);
       awayName = teamName(game.away.conf, game.away.seed);
       homeLabel = `AFC — ${homeName}`;
       awayLabel = `NFC — ${awayName}`;
     }
 
-    // Not ready placeholders
     if (!homeName || !awayName){
       const ph = document.createElement("div");
       ph.className = "game";
@@ -445,6 +434,9 @@
     const card = document.createElement("div");
     card.className = "game";
 
+    const homeSeedDisplay = (!isSB) ? `#${game.home}` : "";
+    const awaySeedDisplay = (!isSB) ? `#${game.away}` : "";
+
     card.innerHTML = `
       <div class="gameHeader">
         <div>${round}${!isSB ? ` · ${conf}` : ""}</div>
@@ -452,50 +444,47 @@
       </div>
 
       <div class="teamRow">
-        <div class="teamBtn ${picked === homeSeed ? "picked" : ""}" data-pick="home">
+        <div class="teamBtn ${picked === homeSeedKey ? "picked" : ""}" data-pick="home">
           <div>
-            ${!isSB ? `<span class="seed">#${game.home}</span>` : ""}
+            ${!isSB ? `<span class="seed">${homeSeedDisplay}</span>` : ""}
             <span>${homeLabel}</span>
           </div>
-          <div>${picked === homeSeed ? "✓" : ""}</div>
+          <div>${picked === homeSeedKey ? "✓" : ""}</div>
         </div>
-        <input class="score" inputmode="numeric" pattern="[0-9]*" type="number" min="0" max="99" step="1" data-score="home" value="${getScore(gid, homeSeed)}" />
+        <input class="score" inputmode="numeric" pattern="[0-9]*" type="number" min="0" max="99" step="1" data-score="home" value="${getScore(gid, homeSeedKey)}" />
       </div>
 
       <div class="teamRow">
-        <div class="teamBtn ${picked === awaySeed ? "picked" : ""}" data-pick="away">
+        <div class="teamBtn ${picked === awaySeedKey ? "picked" : ""}" data-pick="away">
           <div>
-            ${!isSB ? `<span class="seed">#${game.away}</span>` : ""}
+            ${!isSB ? `<span class="seed">${awaySeedDisplay}</span>` : ""}
             <span>${awayLabel}</span>
           </div>
-          <div>${picked === awaySeed ? "✓" : ""}</div>
+          <div>${picked === awaySeedKey ? "✓" : ""}</div>
         </div>
-        <input class="score" inputmode="numeric" pattern="[0-9]*" type="number" min="0" max="99" step="1" data-score="away" value="${getScore(gid, awaySeed)}" />
+        <input class="score" inputmode="numeric" pattern="[0-9]*" type="number" min="0" max="99" step="1" data-score="away" value="${getScore(gid, awaySeedKey)}" />
       </div>
 
       <div class="note">Click a team to set winner. Enter both scores (no ties).</div>
     `;
 
-    // Winner pick handlers
-    const btns = card.querySelectorAll(".teamBtn");
-    btns.forEach(btn=>{
+    // Winner pick
+    card.querySelectorAll(".teamBtn").forEach(btn=>{
       btn.addEventListener("click", ()=>{
         const which = btn.getAttribute("data-pick");
-        const win = (which === "home") ? homeSeed : awaySeed;
+        const win = (which === "home") ? homeSeedKey : awaySeedKey;
         winnerSeedByGameId[gid] = win;
 
-        // downstream may change due to reseeding — reconcile + re-render everything
         reconcileDownstream();
         renderAll();
       });
     });
 
-    // Score handlers
-    const inputs = card.querySelectorAll("input.score");
-    inputs.forEach(inp=>{
+    // Scores
+    card.querySelectorAll("input.score").forEach(inp=>{
       inp.addEventListener("input", ()=>{
         const which = inp.getAttribute("data-score");
-        const seedKey = (which === "home") ? homeSeed : awaySeed;
+        const seedKey = (which === "home") ? homeSeedKey : awaySeedKey;
         const v = inp.value === "" ? "" : Number(inp.value);
         setScore(gid, seedKey, v);
       });
@@ -515,7 +504,6 @@
       renderGame(el, g);
     });
 
-    // Bye note
     const bye = document.createElement("div");
     bye.className = "game";
     bye.innerHTML = `
@@ -563,8 +551,6 @@
       renderGame(el, { id:"SB_1", conf:"SB", round:"Super Bowl", home:null, away:null });
       return;
     }
-
-    // For SB, store scores keys like "AFC:1" and "NFC:2"
     renderGame(el, sb);
   }
 
@@ -580,12 +566,10 @@
     renderSuperBowl();
   }
 
-  // ---------- Validation + Submit ----------
+  // ---------- Submit ----------
   function collectAllGamesResolved(){
-    // Build list of games currently visible/valid based on your picks
     const games = [];
 
-    // Wild Card
     ["AFC","NFC"].forEach(conf=>{
       WC_MATCHUPS.forEach((pair, idx)=>{
         const [a,b] = pair;
@@ -593,16 +577,12 @@
         games.push({ id:`WC_${conf}_${idx+1}`, conf, round:"Wild Card", home, away, type:"CONF" });
       });
 
-      // Divisional (if ready)
-      const div = computeDivisionalGames(conf);
-      div.forEach(g => games.push({ ...g, type:"CONF" }));
+      computeDivisionalGames(conf).forEach(g => games.push({ ...g, type:"CONF" }));
 
-      // Conference (if ready)
       const cg = computeConferenceGame(conf);
       if (cg) games.push({ ...cg, type:"CONF" });
     });
 
-    // Super Bowl (if ready)
     const sb = computeSuperBowlGame();
     if (sb) games.push({ ...sb, type:"SB" });
 
@@ -614,14 +594,11 @@
     if (!name) throw new Error("Please enter your name.");
 
     const games = collectAllGamesResolved();
-    if (!games.length) throw new Error("No games to submit yet.");
 
     const picks = [];
 
     for (const g of games){
       const gid = g.id;
-
-      // Winner must be selected
       const w = winnerSeedByGameId[gid];
       if (w === undefined) throw new Error(`Pick a winner for: ${g.round} (${g.conf})`);
 
@@ -633,13 +610,13 @@
         const sAway = getScore(gid, awaySeed);
 
         if (sHome === "" || sAway === "") throw new Error(`Enter both scores for: ${g.round} (${g.conf})`);
+
         const a = Number(sHome), b = Number(sAway);
         if (!Number.isInteger(a) || !Number.isInteger(b) || a < 0 || b < 0 || a > 99 || b > 99) {
           throw new Error(`Invalid score in: ${g.round} (${g.conf})`);
         }
         if (a === b) throw new Error(`No ties allowed (playoffs): ${g.round} (${g.conf})`);
 
-        // Selected winner must match higher score
         const actualWinner = (a > b) ? homeSeed : awaySeed;
         if (w !== actualWinner){
           const hn = teamName(g.conf, homeSeed);
@@ -662,7 +639,6 @@
         });
 
       } else {
-        // Super Bowl: home = {conf,seed} and away = {conf,seed}
         const sb = computeSuperBowlGame();
         const homeKey = `${sb.home.conf}:${sb.home.seed}`;
         const awayKey = `${sb.away.conf}:${sb.away.seed}`;
@@ -670,7 +646,8 @@
         const sHome = getScore(gid, homeKey);
         const sAway = getScore(gid, awayKey);
 
-        if (sHome === "" || sAway === "") throw new Error(`Enter both scores for: Super Bowl`);
+        if (sHome === "" || sAway === "") throw new Error("Enter both scores for: Super Bowl");
+
         const a = Number(sHome), b = Number(sAway);
         if (!Number.isInteger(a) || !Number.isInteger(b) || a < 0 || b < 0 || a > 99 || b > 99) {
           throw new Error("Invalid Super Bowl score.");
@@ -729,7 +706,7 @@
     }
   });
 
-  // Initial draw
+  // Initial render
   renderAll();
 </script>
 </body>
