@@ -1,0 +1,736 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>NFL Playoff Pool — Full Bracket</title>
+  <style>
+    :root{
+      --border:#e3e3e3;
+      --text:#111;
+      --muted:#666;
+      --bg:#fff;
+      --card:#fafafa;
+      --accent:#111;
+      --ok:#0a7a2f;
+      --err:#b00020;
+    }
+    body { font-family: -apple-system, system-ui, Segoe UI, Roboto, Arial; margin: 16px; color:var(--text); background:var(--bg); }
+    h1 { font-size: 20px; margin: 0 0 6px 0; }
+    .muted { color: var(--muted); font-size: 14px; }
+    .topbar { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin: 10px 0 14px 0; }
+    input[type="text"]{ padding:10px; border:1px solid #ccc; border-radius:10px; width:240px; }
+    button{ padding:12px 14px; border:0; border-radius:12px; background:var(--accent); color:#fff; font-weight:700; cursor:pointer; }
+    button:disabled{ opacity:.5; cursor:not-allowed; }
+
+    /* Bracket Layout */
+    .bracket {
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+      gap: 12px;
+      align-items:start;
+    }
+    .col { border:1px solid var(--border); border-radius:14px; padding:12px; background:#fff; }
+    .col h2 { font-size:16px; margin:0 0 10px 0; }
+    .roundTitle { font-size:13px; color:var(--muted); margin: 2px 0 10px 0; }
+
+    .game{
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:10px;
+      background:var(--card);
+      margin-bottom:10px;
+    }
+    .gameHeader{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      margin-bottom:8px;
+      font-size:13px;
+      color:var(--muted);
+    }
+    .teamRow{
+      display:grid;
+      grid-template-columns: 1fr 70px;
+      gap:10px;
+      align-items:center;
+      margin: 6px 0;
+    }
+    .teamBtn{
+      border:1px solid var(--border);
+      background:#fff;
+      border-radius:12px;
+      padding:10px;
+      text-align:left;
+      cursor:pointer;
+      user-select:none;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      font-weight:700;
+    }
+    .seed{
+      font-weight:800;
+      color:var(--muted);
+      margin-right:8px;
+    }
+    .picked{
+      border-color: #111;
+      box-shadow: 0 0 0 2px rgba(17,17,17,.10) inset;
+    }
+    .score{
+      width:70px;
+      padding:10px;
+      border:1px solid #ccc;
+      border-radius:10px;
+      font-size:14px;
+    }
+    .placeholder{
+      opacity:.55;
+      font-weight:600;
+    }
+    .note{
+      font-size:12px;
+      color:var(--muted);
+      margin-top:6px;
+      line-height:1.25;
+    }
+
+    .centerCol{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    .sbCard{
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:12px;
+      background:#fff;
+    }
+    .status { margin-top:10px; font-weight:700; }
+    .ok { color: var(--ok); }
+    .error { color: var(--err); }
+
+    /* Debug frame (hide later) */
+    #resultFrame{
+      width:100%;
+      height:110px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      margin-top:12px;
+      background:#fff;
+    }
+  </style>
+</head>
+<body>
+  <h1>NFL Playoff Pool — Full Bracket</h1>
+  <div class="muted">
+    Click the winner for each game and enter both scores. Divisional & Conference rounds reseed:
+    <b>#1 plays the lowest remaining seed</b>.
+  </div>
+
+  <div class="topbar">
+    <label>
+      <div class="muted">Your name</div>
+      <input id="name" type="text" placeholder="Your name" />
+    </label>
+
+    <button id="submitBtn">Submit Full Bracket</button>
+    <div id="status" class="status muted"></div>
+  </div>
+
+  <div class="bracket">
+    <!-- AFC side -->
+    <div class="col" id="afc_wc">
+      <h2>AFC</h2>
+      <div class="roundTitle">Wild Card</div>
+      <div id="afc_wc_games"></div>
+    </div>
+
+    <div class="col" id="afc_div">
+      <h2>AFC</h2>
+      <div class="roundTitle">Divisional</div>
+      <div id="afc_div_games"></div>
+      <div class="note">Reseeds after Wild Card.</div>
+    </div>
+
+    <div class="col" id="afc_conf">
+      <h2>AFC</h2>
+      <div class="roundTitle">Conference</div>
+      <div id="afc_conf_games"></div>
+    </div>
+
+    <!-- Super Bowl (center) -->
+    <div class="col centerCol">
+      <div class="sbCard">
+        <h2>Super Bowl</h2>
+        <div class="roundTitle">Final</div>
+        <div id="sb_game"></div>
+        <div class="note">Home/away doesn’t matter.</div>
+      </div>
+
+      <!-- DEBUG: shows OK/ERROR response from Apps Script.
+           Once you’re satisfied, change display to none. -->
+      <iframe id="resultFrame" name="resultFrame"></iframe>
+
+      <!-- Hidden POST form (CORS-proof) -->
+      <form id="postForm" target="resultFrame" method="POST" style="display:none;">
+        <input name="round" id="f_round" />
+        <input name="name" id="f_name" />
+        <textarea name="picks" id="f_picks"></textarea>
+      </form>
+    </div>
+
+    <!-- NFC side -->
+    <div class="col" id="nfc_wc">
+      <h2>NFC</h2>
+      <div class="roundTitle">Wild Card</div>
+      <div id="nfc_wc_games"></div>
+    </div>
+
+    <div class="col" id="nfc_div">
+      <h2>NFC</h2>
+      <div class="roundTitle">Divisional</div>
+      <div id="nfc_div_games"></div>
+      <div class="note">Reseeds after Wild Card.</div>
+    </div>
+
+    <div class="col" id="nfc_conf">
+      <h2>NFC</h2>
+      <div class="roundTitle">Conference</div>
+      <div id="nfc_conf_games"></div>
+    </div>
+  </div>
+
+<script>
+  // Your Apps Script Web App URL (must end in /exec)
+  const API_URL = "https://script.google.com/macros/s/AKfycbwwjmNiNpnrKpDCLXZTkXJBXXko23cVPifr-gxpfLUCWv8pjnX6Q29-W6izJStyTlE/exec";
+
+  // Seeds from you
+  const TEAMS = {
+    AFC: {
+      1: "Denver Broncos",
+      2: "New England Patriots",
+      3: "Jacksonville Jaguars",
+      4: "Pitsburgh Steelers",
+      5: "Houston Texans",
+      6: "Buffalo Bills",
+      7: "LA Chargers"
+    },
+    NFC: {
+      1: "Seattle Seahawks",
+      2: "Chicago Bears",
+      3: "Philidelphia Eagles",
+      4: "Carolina Panthers",
+      5: "LA Rams",
+      6: "SF 49ers",
+      7: "Greenbay Packers"
+    }
+  };
+
+  // Wild Card matchups (standard 2v7, 3v6, 4v5)
+  const WC_MATCHUPS = [
+    [2,7],
+    [3,6],
+    [4,5]
+  ];
+
+  // ---------- State ----------
+  // winnerSeedByGameId: { [gameId]: seedNumber }
+  const winnerSeedByGameId = {};
+  // scoresByGameId: { [gameId]: { [seed]: number } }
+  const scoresByGameId = {};
+
+  // ---------- Helpers ----------
+  function assertValidApiUrl(url){
+    if (!url.startsWith("https://script.google.com/macros/s/")) throw new Error("Bad API_URL");
+    if (!url.endsWith("/exec")) throw new Error("API_URL must end with /exec");
+  }
+
+  function teamName(conf, seed){
+    return TEAMS[conf]?.[seed] ?? null;
+  }
+
+  function betterSeedHomePair(seedA, seedB){
+    // Lower seed number is better and hosts (home)
+    return seedA < seedB ? [seedA, seedB] : [seedB, seedA];
+  }
+
+  function getScore(gameId, seed){
+    return (scoresByGameId[gameId] && scoresByGameId[gameId][seed] !== undefined)
+      ? scoresByGameId[gameId][seed]
+      : "";
+  }
+
+  function setScore(gameId, seed, val){
+    if (!scoresByGameId[gameId]) scoresByGameId[gameId] = {};
+    scoresByGameId[gameId][seed] = val;
+  }
+
+  function clearGameState(gameId){
+    delete winnerSeedByGameId[gameId];
+    delete scoresByGameId[gameId];
+  }
+
+  // Build round games based on current winners (reseeding)
+  function computeDivisionalGames(conf){
+    // Remaining seeds: 1 + WC winners
+    const wcWinnerSeeds = WC_MATCHUPS.map((pair, idx) => {
+      const gameId = `WC_${conf}_${idx+1}`;
+      return winnerSeedByGameId[gameId] ?? null;
+    });
+
+    if (wcWinnerSeeds.some(x => x === null)) return []; // not ready
+
+    const remaining = [1, ...wcWinnerSeeds].slice().sort((a,b)=>a-b); // ascending
+    // #1 plays lowest remaining team = highest seed number
+    const top = 1;
+    const lowestRemaining = remaining[remaining.length - 1];
+    const others = remaining.filter(s => s !== top && s !== lowestRemaining);
+
+    const g1 = betterSeedHomePair(top, lowestRemaining);     // [home, away]
+    const g2 = betterSeedHomePair(others[0], others[1]);     // [home, away]
+
+    return [
+      { id:`DIV_${conf}_1`, conf, round:"Divisional", home:g1[0], away:g1[1] },
+      { id:`DIV_${conf}_2`, conf, round:"Divisional", home:g2[0], away:g2[1] }
+    ];
+  }
+
+  function computeConferenceGame(conf){
+    const divGames = computeDivisionalGames(conf);
+    if (divGames.length !== 2) return null;
+
+    const w1 = winnerSeedByGameId[divGames[0].id] ?? null;
+    const w2 = winnerSeedByGameId[divGames[1].id] ?? null;
+    if (w1 === null || w2 === null) return null;
+
+    const [home, away] = betterSeedHomePair(w1, w2);
+    return { id:`CONF_${conf}_1`, conf, round:"Conference", home, away };
+  }
+
+  function computeSuperBowlGame(){
+    const afcConf = computeConferenceGame("AFC");
+    const nfcConf = computeConferenceGame("NFC");
+    if (!afcConf || !nfcConf) return null;
+
+    const afcChamp = winnerSeedByGameId[afcConf.id] ?? null;
+    const nfcChamp = winnerSeedByGameId[nfcConf.id] ?? null;
+    if (afcChamp === null || nfcChamp === null) return null;
+
+    // Home/away doesn't matter; we’ll display AFC vs NFC
+    return {
+      id: "SB_1",
+      conf: "SB",
+      round: "Super Bowl",
+      home: { conf:"AFC", seed: afcChamp },
+      away: { conf:"NFC", seed: nfcChamp }
+    };
+  }
+
+  // If a game’s participants change due to reseeding, clear that game + downstream
+  function reconcileDownstream(){
+    // Divisional games
+    ["AFC","NFC"].forEach(conf=>{
+      const div = computeDivisionalGames(conf);
+      const expectedDivIds = [`DIV_${conf}_1`,`DIV_${conf}_2`];
+
+      // If not ready, clear div + conf + SB state
+      if (div.length !== 2){
+        expectedDivIds.forEach(clearGameState);
+        clearGameState(`CONF_${conf}_1`);
+        clearGameState("SB_1");
+        return;
+      }
+
+      // Ensure stored scores correspond to current participants; else clear
+      div.forEach(g=>{
+        const stored = scoresByGameId[g.id];
+        const winner = winnerSeedByGameId[g.id];
+        const validSeeds = new Set([g.home, g.away]);
+
+        if (stored){
+          const keys = Object.keys(stored).map(k=>Number(k));
+          const mismatch = keys.some(s => !validSeeds.has(s));
+          if (mismatch) clearGameState(g.id);
+        }
+        if (winner !== undefined && !validSeeds.has(winner)) clearGameState(g.id);
+      });
+
+      // Conference game
+      const confGame = computeConferenceGame(conf);
+      const confId = `CONF_${conf}_1`;
+      if (!confGame){
+        clearGameState(confId);
+        clearGameState("SB_1");
+        return;
+      }
+      const storedC = scoresByGameId[confId];
+      const winnerC = winnerSeedByGameId[confId];
+      const validC = new Set([confGame.home, confGame.away]);
+      if (storedC){
+        const keys = Object.keys(storedC).map(k=>Number(k));
+        if (keys.some(s=>!validC.has(s))) clearGameState(confId);
+      }
+      if (winnerC !== undefined && !validC.has(winnerC)) clearGameState(confId);
+
+      // Super Bowl depends on both conferences; handle in render
+    });
+
+    // Super Bowl: if either champ changes, clear SB state
+    const sb = computeSuperBowlGame();
+    if (!sb){
+      clearGameState("SB_1");
+      return;
+    }
+    const storedSB = scoresByGameId["SB_1"];
+    const winnerSB = winnerSeedByGameId["SB_1"];
+    const sbSeeds = new Set([`${sb.home.conf}:${sb.home.seed}`, `${sb.away.conf}:${sb.away.seed}`]);
+
+    if (storedSB){
+      const keys = Object.keys(storedSB); // we’ll store keys as "AFC:1" etc
+      if (keys.some(k => !sbSeeds.has(k))) clearGameState("SB_1");
+    }
+    if (winnerSB !== undefined){
+      // winner stored as string key "AFC:1" or "NFC:2"
+      if (!sbSeeds.has(winnerSB)) clearGameState("SB_1");
+    }
+  }
+
+  // ---------- Rendering ----------
+  function renderGame(container, game, opts={}){
+    const { conf, round } = game;
+
+    const isSB = conf === "SB";
+    const gid = game.id;
+
+    // Build participants
+    let homeSeed, awaySeed, homeName, awayName, homeLabel, awayLabel;
+
+    if (!isSB){
+      homeSeed = game.home;
+      awaySeed = game.away;
+      homeName = teamName(conf, homeSeed);
+      awayName = teamName(conf, awaySeed);
+      homeLabel = `${homeName}`;
+      awayLabel = `${awayName}`;
+    } else {
+      homeSeed = `${game.home.conf}:${game.home.seed}`;
+      awaySeed = `${game.away.conf}:${game.away.seed}`;
+      homeName = teamName(game.home.conf, game.home.seed);
+      awayName = teamName(game.away.conf, game.away.seed);
+      homeLabel = `AFC — ${homeName}`;
+      awayLabel = `NFC — ${awayName}`;
+    }
+
+    // Not ready placeholders
+    if (!homeName || !awayName){
+      const ph = document.createElement("div");
+      ph.className = "game";
+      ph.innerHTML = `
+        <div class="gameHeader">
+          <div>${round}</div>
+          <div class="placeholder">Waiting on prior picks</div>
+        </div>
+        <div class="note">Complete earlier round winners to unlock this game.</div>
+      `;
+      container.appendChild(ph);
+      return;
+    }
+
+    const picked = winnerSeedByGameId[gid];
+
+    const card = document.createElement("div");
+    card.className = "game";
+
+    card.innerHTML = `
+      <div class="gameHeader">
+        <div>${round}${!isSB ? ` · ${conf}` : ""}</div>
+        <div>${!isSB ? `Home: #${Math.min(game.home, game.away)} seed` : "—"}</div>
+      </div>
+
+      <div class="teamRow">
+        <div class="teamBtn ${picked === homeSeed ? "picked" : ""}" data-pick="home">
+          <div>
+            ${!isSB ? `<span class="seed">#${game.home}</span>` : ""}
+            <span>${homeLabel}</span>
+          </div>
+          <div>${picked === homeSeed ? "✓" : ""}</div>
+        </div>
+        <input class="score" inputmode="numeric" pattern="[0-9]*" type="number" min="0" max="99" step="1" data-score="home" value="${getScore(gid, homeSeed)}" />
+      </div>
+
+      <div class="teamRow">
+        <div class="teamBtn ${picked === awaySeed ? "picked" : ""}" data-pick="away">
+          <div>
+            ${!isSB ? `<span class="seed">#${game.away}</span>` : ""}
+            <span>${awayLabel}</span>
+          </div>
+          <div>${picked === awaySeed ? "✓" : ""}</div>
+        </div>
+        <input class="score" inputmode="numeric" pattern="[0-9]*" type="number" min="0" max="99" step="1" data-score="away" value="${getScore(gid, awaySeed)}" />
+      </div>
+
+      <div class="note">Click a team to set winner. Enter both scores (no ties).</div>
+    `;
+
+    // Winner pick handlers
+    const btns = card.querySelectorAll(".teamBtn");
+    btns.forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const which = btn.getAttribute("data-pick");
+        const win = (which === "home") ? homeSeed : awaySeed;
+        winnerSeedByGameId[gid] = win;
+
+        // downstream may change due to reseeding — reconcile + re-render everything
+        reconcileDownstream();
+        renderAll();
+      });
+    });
+
+    // Score handlers
+    const inputs = card.querySelectorAll("input.score");
+    inputs.forEach(inp=>{
+      inp.addEventListener("input", ()=>{
+        const which = inp.getAttribute("data-score");
+        const seedKey = (which === "home") ? homeSeed : awaySeed;
+        const v = inp.value === "" ? "" : Number(inp.value);
+        setScore(gid, seedKey, v);
+      });
+    });
+
+    container.appendChild(card);
+  }
+
+  function renderWildCard(conf){
+    const el = document.getElementById(`${conf.toLowerCase()}_wc_games`);
+    el.innerHTML = "";
+
+    WC_MATCHUPS.forEach((pair, idx)=>{
+      const [a,b] = pair;
+      const [home, away] = betterSeedHomePair(a,b);
+      const g = { id:`WC_${conf}_${idx+1}`, conf, round:"Wild Card", home, away };
+      renderGame(el, g);
+    });
+
+    // Bye note
+    const bye = document.createElement("div");
+    bye.className = "game";
+    bye.innerHTML = `
+      <div class="gameHeader">
+        <div>Bye</div>
+        <div>#1 Seed</div>
+      </div>
+      <div><b>${teamName(conf, 1)}</b> advances to Divisional.</div>
+      <div class="note">Divisional reseeding depends on your Wild Card winners.</div>
+    `;
+    el.appendChild(bye);
+  }
+
+  function renderDivisional(conf){
+    const el = document.getElementById(`${conf.toLowerCase()}_div_games`);
+    el.innerHTML = "";
+
+    const div = computeDivisionalGames(conf);
+    if (div.length !== 2){
+      renderGame(el, { id:`DIV_${conf}_1`, conf, round:"Divisional", home:null, away:null });
+      renderGame(el, { id:`DIV_${conf}_2`, conf, round:"Divisional", home:null, away:null });
+      return;
+    }
+    div.forEach(g => renderGame(el, g));
+  }
+
+  function renderConference(conf){
+    const el = document.getElementById(`${conf.toLowerCase()}_conf_games`);
+    el.innerHTML = "";
+
+    const g = computeConferenceGame(conf);
+    if (!g){
+      renderGame(el, { id:`CONF_${conf}_1`, conf, round:"Conference", home:null, away:null });
+      return;
+    }
+    renderGame(el, g);
+  }
+
+  function renderSuperBowl(){
+    const el = document.getElementById("sb_game");
+    el.innerHTML = "";
+
+    const sb = computeSuperBowlGame();
+    if (!sb){
+      renderGame(el, { id:"SB_1", conf:"SB", round:"Super Bowl", home:null, away:null });
+      return;
+    }
+
+    // For SB, store scores keys like "AFC:1" and "NFC:2"
+    renderGame(el, sb);
+  }
+
+  function renderAll(){
+    renderWildCard("AFC");
+    renderDivisional("AFC");
+    renderConference("AFC");
+
+    renderWildCard("NFC");
+    renderDivisional("NFC");
+    renderConference("NFC");
+
+    renderSuperBowl();
+  }
+
+  // ---------- Validation + Submit ----------
+  function collectAllGamesResolved(){
+    // Build list of games currently visible/valid based on your picks
+    const games = [];
+
+    // Wild Card
+    ["AFC","NFC"].forEach(conf=>{
+      WC_MATCHUPS.forEach((pair, idx)=>{
+        const [a,b] = pair;
+        const [home,away] = betterSeedHomePair(a,b);
+        games.push({ id:`WC_${conf}_${idx+1}`, conf, round:"Wild Card", home, away, type:"CONF" });
+      });
+
+      // Divisional (if ready)
+      const div = computeDivisionalGames(conf);
+      div.forEach(g => games.push({ ...g, type:"CONF" }));
+
+      // Conference (if ready)
+      const cg = computeConferenceGame(conf);
+      if (cg) games.push({ ...cg, type:"CONF" });
+    });
+
+    // Super Bowl (if ready)
+    const sb = computeSuperBowlGame();
+    if (sb) games.push({ ...sb, type:"SB" });
+
+    return games;
+  }
+
+  function validateAndBuildSubmission(){
+    const name = document.getElementById("name").value.trim();
+    if (!name) throw new Error("Please enter your name.");
+
+    const games = collectAllGamesResolved();
+    if (!games.length) throw new Error("No games to submit yet.");
+
+    const picks = [];
+
+    for (const g of games){
+      const gid = g.id;
+
+      // Winner must be selected
+      const w = winnerSeedByGameId[gid];
+      if (w === undefined) throw new Error(`Pick a winner for: ${g.round} (${g.conf})`);
+
+      if (g.type === "CONF"){
+        const homeSeed = g.home;
+        const awaySeed = g.away;
+
+        const sHome = getScore(gid, homeSeed);
+        const sAway = getScore(gid, awaySeed);
+
+        if (sHome === "" || sAway === "") throw new Error(`Enter both scores for: ${g.round} (${g.conf})`);
+        const a = Number(sHome), b = Number(sAway);
+        if (!Number.isInteger(a) || !Number.isInteger(b) || a < 0 || b < 0 || a > 99 || b > 99) {
+          throw new Error(`Invalid score in: ${g.round} (${g.conf})`);
+        }
+        if (a === b) throw new Error(`No ties allowed (playoffs): ${g.round} (${g.conf})`);
+
+        // Selected winner must match higher score
+        const actualWinner = (a > b) ? homeSeed : awaySeed;
+        if (w !== actualWinner){
+          const hn = teamName(g.conf, homeSeed);
+          const an = teamName(g.conf, awaySeed);
+          throw new Error(`Winner mismatch in ${g.round} (${g.conf}). Your scores say ${(a>b)?hn:an} wins.`);
+        }
+
+        picks.push({
+          bracketType: "FULL",
+          round: g.round,
+          conf: g.conf,
+          homeSeed,
+          awaySeed,
+          homeTeam: teamName(g.conf, homeSeed),
+          awayTeam: teamName(g.conf, awaySeed),
+          homeScore: a,
+          awayScore: b,
+          winnerSeed: w,
+          winnerTeam: teamName(g.conf, w)
+        });
+
+      } else {
+        // Super Bowl: home = {conf,seed} and away = {conf,seed}
+        const sb = computeSuperBowlGame();
+        const homeKey = `${sb.home.conf}:${sb.home.seed}`;
+        const awayKey = `${sb.away.conf}:${sb.away.seed}`;
+
+        const sHome = getScore(gid, homeKey);
+        const sAway = getScore(gid, awayKey);
+
+        if (sHome === "" || sAway === "") throw new Error(`Enter both scores for: Super Bowl`);
+        const a = Number(sHome), b = Number(sAway);
+        if (!Number.isInteger(a) || !Number.isInteger(b) || a < 0 || b < 0 || a > 99 || b > 99) {
+          throw new Error("Invalid Super Bowl score.");
+        }
+        if (a === b) throw new Error("No ties allowed (Super Bowl).");
+
+        const actualWinner = (a > b) ? homeKey : awayKey;
+        if (w !== actualWinner){
+          const hn = teamName(sb.home.conf, sb.home.seed);
+          const an = teamName(sb.away.conf, sb.away.seed);
+          throw new Error(`Winner mismatch in Super Bowl. Your scores say ${(a>b)?hn:an} wins.`);
+        }
+
+        picks.push({
+          bracketType: "FULL",
+          round: "Super Bowl",
+          conf: "SB",
+          homeTeam: `AFC — ${teamName(sb.home.conf, sb.home.seed)}`,
+          awayTeam: `NFC — ${teamName(sb.away.conf, sb.away.seed)}`,
+          homeScore: a,
+          awayScore: b,
+          winner: w,
+          winnerTeam: (w === homeKey)
+            ? `AFC — ${teamName(sb.home.conf, sb.home.seed)}`
+            : `NFC — ${teamName(sb.away.conf, sb.away.seed)}`
+        });
+      }
+    }
+
+    return { name, picks };
+  }
+
+  document.getElementById("submitBtn").addEventListener("click", ()=>{
+    const status = document.getElementById("status");
+    status.className = "status muted";
+    status.textContent = "";
+
+    try{
+      assertValidApiUrl(API_URL);
+      const { name, picks } = validateAndBuildSubmission();
+
+      const form = document.getElementById("postForm");
+      form.action = API_URL;
+
+      document.getElementById("f_round").value = "Full Bracket";
+      document.getElementById("f_name").value = name;
+      document.getElementById("f_picks").value = JSON.stringify(picks);
+
+      form.submit();
+
+      status.className = "status ok";
+      status.textContent = "Submitted ✅ (Full Bracket sent to Google Sheet)";
+    } catch(err){
+      status.className = "status error";
+      status.textContent = err.message || String(err);
+    }
+  });
+
+  // Initial draw
+  renderAll();
+</script>
+</body>
+</html>
