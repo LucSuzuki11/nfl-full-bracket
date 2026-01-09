@@ -104,8 +104,9 @@
       border:1px solid var(--border);
       border-radius:12px;
       padding:8px;
-      background:var(--card);
-      height: 100%;
+      background:#fff; 
+      height: auto; 
+      width: auto;
       box-sizing: border-box;
       min-width: 0;
     }
@@ -165,7 +166,10 @@
     }
 
     /* Slot positioning (2 rows tall) */
-    .slot{ grid-row: auto / span 2; min-width:0; }
+    .slot{ 
+      grid-row: auto / span 2; min-width:0; 
+      z-index: 1;
+    }
 
     /* AFC (moves left -> right toward center) */
     #afc_wc1 { grid-column: 1; grid-row: 2 / span 2; }
@@ -191,6 +195,8 @@
       width:100%;
       height:100%;
       pointer-events:none;
+      background: transparent !important;   /* <-- important */
+      z-index: 0;                           /* <-- behind cards */
     }
 
     /* Debug frame (hide later) */
@@ -215,9 +221,6 @@
 </head>
 <body>
   <h1>NFL Playoff Pool — Full Bracket</h1>
-  <div class="muted">
-    Click winners + enter scores. Reseeding: <b>#1 plays the lowest remaining seed</b>. (No ties.)
-  </div>
 
   <div class="topbar">
     <label>
@@ -235,7 +238,7 @@
       <section class="side" id="afcSide">
         <div class="sideHeader">
           <h2>AFC</h2>
-          <div class="muted" style="font-size:12px;">WC → DIV → CONF</div>
+          
         </div>
         <div class="roundLabels">
           <div>Wild Card</div><div>Divisional</div><div>Conference</div>
@@ -274,7 +277,6 @@
       <section class="side" id="nfcSide">
         <div class="sideHeader">
           <h2>NFC</h2>
-          <div class="muted" style="font-size:12px;">WC → DIV → CONF</div>
         </div>
         <div class="roundLabels">
           <div>Conference</div><div>Divisional</div><div>Wild Card</div>
@@ -302,22 +304,22 @@
   // Team data (seed -> name + abbreviation for logo)
   const TEAMS = {
     AFC: {
-      1: { name:"Denver Broncos", abbr:"den" },
-      2: { name:"New England Patriots", abbr:"ne" },
-      3: { name:"Jacksonville Jaguars", abbr:"jax" },
-      4: { name:"Pitsburgh Steelers", abbr:"pit" },
-      5: { name:"Houston Texans", abbr:"hou" },
-      6: { name:"Buffalo Bills", abbr:"buf" },
-      7: { name:"LA Chargers", abbr:"lac" }
+      1: { name:"Broncos", abbr:"den" },
+      2: { name:"Patriots", abbr:"ne" },
+      3: { name:"Jaguars", abbr:"jax" },
+      4: { name:"Steelers", abbr:"pit" },
+      5: { name:"Texans", abbr:"hou" },
+      6: { name:"Bills", abbr:"buf" },
+      7: { name:"Chargers", abbr:"lac" }
     },
     NFC: {
-      1: { name:"Seattle Seahawks", abbr:"sea" },
-      2: { name:"Chicago Bears", abbr:"chi" },
-      3: { name:"Philidelphia Eagles", abbr:"phi" },
-      4: { name:"Carolina Panthers", abbr:"car" },
-      5: { name:"LA Rams", abbr:"lar" },
-      6: { name:"SF 49ers", abbr:"sf" },
-      7: { name:"Greenbay Packers", abbr:"gb" }
+      1: { name:"Seahawks", abbr:"sea" },
+      2: { name:"Bears", abbr:"chi" },
+      3: { name:"Eagles", abbr:"phi" },
+      4: { name:"Panthers", abbr:"car" },
+      5: { name:"Rams", abbr:"lar" },
+      6: { name:"49ers", abbr:"sf" },
+      7: { name:"Packers", abbr:"gb" }
     }
   };
 
